@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mapa de Mapbox con Puntos D3.js</title>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.12.0/mapbox-gl.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        #map {
+            width: 100%;
+            height: 600px;
+        }
+        .info-box {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 20px;
+            background-color: #fff;
+            border-top: 1px solid #ccc;
+            text-align: center;
+        }
+        .point-icon {
+            width: 50px;
+            height: 50px;
+            background-image: url('https://live.staticflickr.com/65535/53773203517_3f4c0f36f9_t.jpg');
+            background-size: cover;
+            border-radius: 50%;
+        }
+        .info-content img {
+            max-width: 200px;
+            max-height: 200px;
+            display: inline-block;
+            vertical-align: top;
+        }
+        .info-content div {
+            display: inline-block;
+            vertical-align: top;
+            text-align: left;
+            max-width: 60%;
+            padding-left: 10px;
+        }
+        .info-content p {
+            font-size: 16px;
+            margin: 5px 0;
+        }
+        .info-content audio {
+            margin-top: 10px;
+            display: block;
+        }
+        @media (max-width: 768px) {
+            .info-content img, .info-content div {
+                display: block;
+                text-align: center;
+                max-width: 100%;
+                padding-left: 0;
+            }
+        }
+    </style>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.12.0/mapbox-gl.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <div id="map"></div>
+    <div class="info-box" id="info-box">
+        <div class="info-content" id="info-content">
+            Hover over a point to see the information here.
+        </div>
+    </div>
+    <script>
+        // Access token for Mapbox
+        mapboxgl.accessToken = 'pk.eyJ1Ijoia2FydG9ncmFmaWMiLCJhIjoiY2t6a2d5MzBjMThhdjJ2cWtmbTF1OXY4bCJ9.vwNfTgP4R1oXwU26H9MHyw';
+
+        // Initialize Mapbox map
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/dark-v10',
+            center: [-66.5, 18.2],
+            zoom: 9
+        });
+
+        // Add SVG layer on top of the Mapbox map
+        const container = map.getCanvasContainer();
+        const svg = d3.select(container).append("svg")
+            .attr("class", "overlay")
+            .style("position", "absolute")
+            .style("top", 0)
+            .style("left", 0)
+            .attr("width", map.getCanvas().width)
+            .attr("height", map.getCanvas().height);
+
+        // Function to project Mapbox coordinates to SVG coordinates
+        function projectPoint(lng, lat) {
+            const point = map.project(new mapboxgl.LngLat(lng, lat));
+            return [point.x, point.y];
+        }
+
+        // Sample images, texts, sounds, and quotes
+        const images = [
+            'https://live.staticflickr.com/65535/52257995294_aa1959f2bd_h.jpg',
+            'https://live.staticflickr.com/65535/50037074606_ce8cacf813_h.jpg',
+            'https://live.staticflickr.com/4126/4846225609_a6c5d362b5_h.jpg',
+            'https://live.staticflickr.com/6077/6089971351_270294dc2f_z.jpg',
+            'https://live.staticflickr.com/65535/51259460241_f2f15fee5d_h.jpg',
+            'https://live.staticflickr.com/8433/7745660428_86c9883177_z.jpg',
+            'https://live.staticflickr.com/65535/52263913730_ea304c202a_z.jpg',
+            'https://live.staticflickr.com/3779/9196272408_9b655fa7a1_z.jpg',
+            'https://live.staticflickr.com/7068/7124273211_e8e2622d78_z.jpg',
+            'https://live.staticflickr.com/7785/29000619403_787760b5c7_z.jpg'
+        ];
+        const texts = [
+            'Lavandula angustifolia - La lavanda es una planta ornamental popular conocida por sus flores fragantes y propiedades medicinales. Comúnmente se usa en aromaterapia, cosméticos y medicina herbal.',
+            'Centaurea cyanus - También conocida como aciano, esta planta es famosa por sus vibrantes flores azules y se utiliza a menudo en jardines y arreglos florales.',
+            'Iris versicolor - Conocida como lirio azul, esta planta de humedales es apreciada por sus grandes y vistosas flores de color azul-púrpura.',
+            'Gossypium hirsutum - Esta es la planta de algodón más cultivada en el mundo, valorada tanto por su fibra como por su aceite de semilla.',
+            'Datura stramonium - También llamada estramonio, esta planta tiene propiedades medicinales pero también es tóxica si se consume en grandes cantidades.',
+            'Cycas circinalis - Una planta de apariencia exótica, también conocida como cica, que se utiliza comúnmente como planta ornamental.',
+            'Solanum lycopersicum - Más conocida como la planta de tomate, es cultivada mundialmente por sus frutos comestibles y nutritivos.',
+            'Aechmea fasciata - Conocida como la planta de urna, es una popular planta de interior apreciada por sus hojas variegadas y sus flores rosadas.',
+            'Anthurium - Estas plantas son muy populares por sus flores duraderas y vistosas que vienen en una variedad de colores.',
+            'Gerbera jamesonii - Conocida como gerbera, esta planta produce flores grandes y vistosas que son muy apreciadas en arreglos florales.'
+        ];
+        const sounds = [
+            'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+            'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+            'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
+            'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
+            'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3',
+            'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3',
+            'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3',
+            'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3',
+            'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3',
+            'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3'
+        ];
+        const quotes = [
+            '“Las flores son una orgullosa afirmación de que un rayo de belleza supera todas las utilidades del mundo.” - Ralph Waldo Emerson',
+            '“Donde las flores florecen, también lo hace la esperanza.” - Lady Bird Johnson',
+            '“Una flor no piensa en competir con la flor de al lado. Solo florece.” - Zen Shin',
+            '“El propósito de la vida es florecer como un bello cactus, con espinas y todo.” - Umberto Eco',
+            '“Incluso la flor más pequeña puede tener las raíces más profundas.” - Matshona Dhliwayo',
+            '“Las plantas tienen una sabiduría innata que nos enseña a crecer en las direcciones correctas.” - Mehmet Murat Ildan',
+            '“La jardinería añade años a tu vida y vida a tus años.” - Desconocido',
+            '“Las plantas son poemas que la tierra escribe sobre el cielo.” - Khalil Gibran',
+            '“Cada flor que se abre nos recuerda el gozo que existe en la simplicidad.” - Anónimo',
+            '“Las flores siempre hacen que la gente sea mejor, más feliz y más servicial; son luz del sol, alimento y medicina para el alma.” - Luther Burbank'
+        ];
+
+        // Generate random points within bounds of Puerto Rico
+        map.on('load', function() {
+            const bounds = map.getBounds();
+            const numPoints = 10;
+            const points = d3.range(numPoints).map(function(i) {
+                const lng = bounds.getWest() + Math.random() * (bounds.getEast() - bounds.getWest());
+                const lat = bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth());
+                return { lat: lat, lng: lng, coords: projectPoint(lng, lat), img: images[i], text: texts[i], sound: sounds[i], quote: quotes[i] };
+            });
+
+            // Draw points
+            const pointElements = svg.selectAll("image")
+                .data(points)
+                .enter()
+                .append("image")
+                .attr("class", "point-icon")
+                .attr("xlink:href", function(d) { return d.img; }) // Set the image URL directly
+                .attr("width", 50)
+                .attr("height", 50)
+                .attr("x", function(d) { return d.coords[0] - 25; })  // Center the icon
+                .attr("y", function(d) { return d.coords[1] - 25; })  // Center the icon
+                .on("mouseover", function(event, d) {
+                    d3.select("#info-content").html(`
+                        <img src="${d.img}" alt="${d.text}">
+                        <div>
+                            <p>${d.text}</p>
+                            <p><em>${d.quote}</em></p>
+                            <audio controls>
+                                <source src="${d.sound}" type="audio/mpeg">
+                                Tu navegador no soporta el elemento de audio.
+                            </audio>
+                        </div>
+                    `);
+                });
+
+            // Update the positions of the points on map move
+            function update() {
+                const bounds = map.getBounds();
+                const topLeft = map.project(bounds.getNorthWest());
+                const bottomRight = map.project(bounds.getSouthEast());
+
+                svg.attr("width", bottomRight.x - topLeft.x)
+                    .attr("height", bottomRight.y - topLeft.y)
+                    .style("left", `${topLeft.x}px`)
+                    .style("top", `${topLeft.y}px`);
+
+                pointElements
+                    .attr("x", function(d) { return projectPoint(d.lng, d.lat)[0] - topLeft.x - 25; })
+                    .attr("y", function(d) { return projectPoint(d.lng, d.lat)[1] - topLeft.y - 25; });
+            }
+
+            map.on("move", update);
+            map.on("zoom", update);
+            update();
+        });
+    </script>
+</body>
+</html>
